@@ -23,8 +23,8 @@ add_library(planecontrol_aidl STATIC
     ${AIDL_GEN_DIR}/cpp/com/rdk/hal/PropertyValue.cpp
 )
 
-target_link_libraries(planecontrol_aidl PUBLIC
-    ${BINDER_LIBRARIES}
+target_link_libraries(planecontrol_aidl PRIVATE
+    binder
     utils_amlhal
 )
 
