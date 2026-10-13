@@ -14,14 +14,13 @@ static bool createResolveFramebuffer(
     int width, 
     int height, 
     GLuint *presolveFbo, 
-    GLuint *presolveTexture,
-    EGLFuncs* eglFuncs)
+    GLuint *presolveTexture)
 {
     GLuint resolveFbo = 0;
     GLuint resolveTexture = 0;
 
     glGenFramebuffers(1, &resolveFbo);
-    eglFuncs->glBindFramebuffer(GL_FRAMEBUFFER, resolveFbo);
+    EGLFuncs::GetInstance()->glBindFramebuffer(GL_FRAMEBUFFER, resolveFbo);
 
     glGenTextures(1, &resolveTexture);
     glBindTexture(GL_TEXTURE_2D, resolveTexture);
@@ -58,7 +57,7 @@ static bool createResolveFramebuffer(
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
-    eglFuncs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    EGLFuncs::GetInstance()->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     *presolveFbo = resolveFbo;
     *presolveTexture = resolveTexture;
@@ -72,11 +71,10 @@ static bool resolveFramebuffer(
     GLuint multisampleFbo,
     GLuint resolveFbo,
     int width,
-    int height,
-    EGLFuncs* eglFuncs)
+    int height)
 {
-    eglFuncs->glBindFramebuffer(GL_READ_FRAMEBUFFER, multisampleFbo);
-    eglFuncs->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, resolveFbo);
+    EGLFuncs::GetInstance()->glBindFramebuffer(GL_READ_FRAMEBUFFER, multisampleFbo);
+    EGLFuncs::GetInstance()->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, resolveFbo);
 
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     //glDrawBuffer(GL_COLOR_ATTACHMENT0);
@@ -89,8 +87,8 @@ static bool resolveFramebuffer(
 
     GLenum error = glGetError();
 
-    eglFuncs->glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    eglFuncs->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    EGLFuncs::GetInstance()->glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    EGLFuncs::GetInstance()->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
     if (error != GL_NO_ERROR)
     {
@@ -105,8 +103,7 @@ bool dumpFramebufferToPPM(
     GLuint framebuffer,
     int width,
     int height,
-    const char* filename,
-    EGLFuncs* eglFuncs)
+    const char* filename)
 {
     //assumes BBP=4 (e.g. RGBA etc,..)
     INFO("dumpFramebufferToPPM fbo=%u %dx%d %s", framebuffer, width, height, filename);
@@ -117,7 +114,7 @@ bool dumpFramebufferToPPM(
     GLuint resolveFbo = 0;
     GLuint resolveTexture = 0;
 
-    if (!createResolveFramebuffer(width, height, &resolveFbo, &resolveTexture, eglFuncs))
+    if (!createResolveFramebuffer(width, height, &resolveFbo, &resolveTexture))
     {
         ERROR("dumpFramebufferToPPM failed: createResolveFramebuffer");
         return false;
@@ -131,7 +128,7 @@ bool dumpFramebufferToPPM(
         return false;
     }
 
-    if (!resolveFramebuffer(framebuffer, resolveFbo, width, height, eglFuncs))
+    if (!resolveFramebuffer(framebuffer, resolveFbo, width, height))
     {
         ERROR("dumpFramebufferToPPM failed: resolveFramebuffer");
         glDeleteTextures(1, &resolveTexture);
@@ -139,7 +136,7 @@ bool dumpFramebufferToPPM(
         return false;
     }
 
-    eglFuncs->glBindFramebuffer(GL_READ_FRAMEBUFFER, resolveFbo);
+    EGLFuncs::GetInstance()->glBindFramebuffer(GL_READ_FRAMEBUFFER, resolveFbo);
 
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -153,7 +150,7 @@ bool dumpFramebufferToPPM(
 
     GLenum error = glGetError();
 
-    eglFuncs->glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    EGLFuncs::GetInstance()->glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 
     glDeleteTextures(1, &resolveTexture);
     glDeleteFramebuffers(1, &resolveFbo);
@@ -193,7 +190,7 @@ bool dumpFramebufferToPPM(
     return true;
 }
 
-void debugDumpFramebuffersCheck(EGLFuncs* eglFuncs)
+void debugDumpFramebuffersCheck()
 {
     static long long lastCheckTime = GetTimeUS();
     long long now = GetTimeUS();
@@ -205,9 +202,9 @@ void debugDumpFramebuffersCheck(EGLFuncs* eglFuncs)
         {
             unlink(FILEPATH_DUMPFB);
 
-            dumpFramebufferToPPM(1, 1920, 1080, "/tmp/fb1.ppm", eglFuncs);
-            dumpFramebufferToPPM(2, 1920, 1080, "/tmp/fb2.ppm", eglFuncs);
-            dumpFramebufferToPPM(3, 1920, 1080, "/tmp/fb3.ppm", eglFuncs);//the embedders fbo (if any)
+            dumpFramebufferToPPM(1, 1920, 1080, "/tmp/fb1.ppm");
+            dumpFramebufferToPPM(2, 1920, 1080, "/tmp/fb2.ppm");
+            dumpFramebufferToPPM(3, 1920, 1080, "/tmp/fb3.ppm");//the embedders fbo (if any)
         }
     }
 }

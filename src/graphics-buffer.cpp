@@ -8,9 +8,8 @@
 extern int DISPLAY_WIDTH;
 extern int DISPLAY_HEIGHT;
 
-GraphicsBuffer::GraphicsBuffer(PlaneControllerClient* client_, EGLFuncs* eglFuncs, EGLDisplay eglDisplay)
+GraphicsBuffer::GraphicsBuffer(PlaneControllerClient* client_, EGLDisplay eglDisplay)
 : client_(client_)
-, eglFuncs_(eglFuncs)
 , eglDisplay_(eglDisplay)
 , bufferId_(INVALID_ID)
 , fd_(INVALID_ID)
@@ -44,7 +43,7 @@ bool GraphicsBuffer::Create()
     format_ = fb.format;
     fd_ = fb.fd;
 
-    DEBUG("GraphicsBuffer Create: id=%u w=%u h=%u str=%u off=%u fmt=%u fd=%d",
+    INFO("GraphicsBuffer Create: id=%u w=%u h=%u str=%u off=%u fmt=%u fd=%d",
            bufferId_, width_, height_, stride_, offset_, format_, fd_);
 
     return true;
@@ -88,16 +87,7 @@ bool GraphicsBuffer::WaitOnRelease()
          return false;
       }
    }
-
-   if (bufferId_ != static_cast<uint32_t>(releasedId))
-   {
-        ERROR("GraphicsBuffer WaitOnRelease: wrong bufferId_ %u, expected %d",
-               bufferId_, releasedId);
-   }
-   else
-   {
-       DEBUG("GraphicsBuffer WaitOnRelease done %u", bufferId_);
-   }
+   DEBUG("GraphicsBuffer WaitOnRelease done %d", releasedId);
    return true;
 }
 
@@ -153,7 +143,7 @@ bool GraphicsBuffer::Load()
 
    DEBUG("GraphicsBuffer Load calling eglCreateImageKHR");
 
-   image_ = eglFuncs_->eglCreateImageKHR(eglDisplay_, EGL_NO_CONTEXT, 
+   image_ = EGLFuncs::GetInstance()->eglCreateImageKHR(eglDisplay_, EGL_NO_CONTEXT, 
 #ifdef PLATFORM_BRCM    
         EGL_NATIVE_PIXMAP_KHR, (EGLClientBuffer)offset_
 #else
@@ -172,7 +162,7 @@ bool GraphicsBuffer::Load()
    GLuint tex = 0;
    glGenTextures(1, &tex);
    glBindTexture(GL_TEXTURE_2D, tex);
-   eglFuncs_->glEGLImageTargetTexture2DOES(GL_TEXTURE_2D/*GL_TEXTURE_EXTERNAL_OES*/, (GLeglImageOES)image_);
+   EGLFuncs::GetInstance()->glEGLImageTargetTexture2DOES(GL_TEXTURE_2D/*GL_TEXTURE_EXTERNAL_OES*/, (GLeglImageOES)image_);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -183,7 +173,7 @@ bool GraphicsBuffer::Load()
    {
       ERROR("GraphicsBuffer Load: glEGLImageTargetTexture2DOES error 0x%X", glerr);
       glDeleteTextures(1, &tex);
-      eglFuncs_->eglDestroyImageKHR(eglDisplay_, image_);
+      EGLFuncs::GetInstance()->eglDestroyImageKHR(eglDisplay_, image_);
       image_ = NULL;
       return false;
    }
@@ -195,7 +185,7 @@ bool GraphicsBuffer::Load()
    GLuint fbo = 0;
    glGenFramebuffers(1, &fbo);
    INFO("GraphicsBuffer Load calling real glBindFramebuffer fbo=%u", fbo);
-   eglFuncs_->glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+   EGLFuncs::GetInstance()->glBindFramebuffer(GL_FRAMEBUFFER, fbo);
    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_, 0);
    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
    if (status != GL_FRAMEBUFFER_COMPLETE)
@@ -203,13 +193,13 @@ bool GraphicsBuffer::Load()
       ERROR("GraphicsBuffer Load: glFramebufferTexture2D error: 0x%X", status);
       glDeleteFramebuffers(1, &fbo);
       glDeleteTextures(1, &tex);
-      eglFuncs_->eglDestroyImageKHR(eglDisplay_, image_);
+      EGLFuncs::GetInstance()->eglDestroyImageKHR(eglDisplay_, image_);
       texture_ = INVALID_ID;
       image_ = NULL;
       return false;
    }
    INFO("GraphicsBuffer Load calling real glBindFramebuffer fbo=0 (unbind)");
-   eglFuncs_->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+   EGLFuncs::GetInstance()->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
    fbo_ = fbo;
 

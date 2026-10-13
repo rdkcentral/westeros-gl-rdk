@@ -2,6 +2,31 @@
 #include "egl-funcs.h"
 #include "logger.h"
 
+EGLFuncs* EGLFuncs::instance_ = nullptr;
+
+EGLFuncs* EGLFuncs::GetInstance()
+{
+   if (!instance_)
+   {
+      instance_ = new EGLFuncs();
+      if (!instance_->Init())
+      {
+         ERROR("EGLFuncs failed to init");
+         //TODO: WHAT NOW ???
+      }
+   }
+   return instance_;
+}
+
+void EGLFuncs::FreeInstance()
+{
+   if (instance_)
+   {
+      delete instance_;
+      instance_ = nullptr;
+   }
+}
+
 EGLFuncs::EGLFuncs()
 : eglGetDisplay(nullptr)
 , eglSwapBuffers(nullptr)

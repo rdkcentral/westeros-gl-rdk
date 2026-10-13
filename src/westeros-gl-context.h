@@ -21,12 +21,10 @@ public:
    bool SwapBuffers();
    void BindFrameBuffer(GLenum target, GLuint framebuffer);
    EGLDisplay GetDisplay(){ return eglDisplay_; }
-   EGLFuncs* GetEGLFuncs() { return &eglFuncs_; }
 #ifdef PLATFORM_DRM    
    struct gbm_device* getGBM() { return gbmDevice_; }
 #endif   
 private:
-   EGLFuncs eglFuncs_;
    PlaneControllerClient client_;
    GraphicsBuffer* buffers_[SWAP_CHAIN_COUNT];
    int frontBufferIndex_;

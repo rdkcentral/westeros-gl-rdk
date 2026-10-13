@@ -18,10 +18,13 @@ typedef EGLBoolean (*PREALEGLQUERYSURFACE)(EGLDisplay, EGLSurface, EGLint, EGLin
 typedef EGLBoolean (*PREALEGLMAKECURRENT)(EGLDisplay, EGLSurface, EGLSurface, EGLContext);
 typedef void (*PREALGLBINDFRAMEBUFFER)(GLenum, GLuint);
 
-struct EGLFuncs
+class EGLFuncs
 {
+public:
     EGLFuncs();
-    bool Init();
+
+    static EGLFuncs* GetInstance();
+    static void FreeInstance();
 
     PREALEGLGETDISPLAY eglGetDisplay;
     PREALEGLSWAPBUFFERS eglSwapBuffers;
@@ -37,5 +40,9 @@ struct EGLFuncs
     PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
 
 private:
+    bool Init();
     bool inited_;
+    
+    static EGLFuncs* instance_;
 };
+

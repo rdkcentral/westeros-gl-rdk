@@ -7,7 +7,7 @@ class PlaneControllerClient;
 class GraphicsBuffer
 {
 public:
-    GraphicsBuffer(PlaneControllerClient* client, EGLFuncs* eglFuncs, EGLDisplay eglDisplay);
+    GraphicsBuffer(PlaneControllerClient* client, EGLDisplay eglDisplay);
     ~GraphicsBuffer();
     
     bool Create();
@@ -19,7 +19,6 @@ public:
 private:
 
     PlaneControllerClient* client_;
-    EGLFuncs* eglFuncs_;
     EGLDisplay eglDisplay_;
     uint32_t bufferId_;
     uint32_t width_;

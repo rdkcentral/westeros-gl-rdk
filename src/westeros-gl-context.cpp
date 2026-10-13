@@ -61,12 +61,6 @@ WesteroGlCtx::~WesteroGlCtx()
 
 bool WesteroGlCtx::Init()
 {
-   if (!eglFuncs_.Init())
-   {
-      ERROR("WesteroGlCtx failed to initialize EGL funcs");
-      return NULL;
-   }
-
 #ifdef PLATFORM_DRM
    // DRM appears to require all this to get a native EGLDisplay
    const char* card = getenv("WESTEROS_DRM_CARD");
@@ -89,7 +83,7 @@ bool WesteroGlCtx::Init()
       return false;
    }
 
-   eglDisplay_ = eglFuncs_.eglGetPlatformDisplayEXT(EGL_PLATFORM_GBM_KHR, gbmDevice_, NULL);
+   eglDisplay_ = EGLFuncs::GetInstance()->eglGetPlatformDisplayEXT(EGL_PLATFORM_GBM_KHR, gbmDevice_, NULL);
    if (eglDisplay_ == EGL_NO_DISPLAY)
       ERROR("eglGetPlatformDisplayEXT EGL_PLATFORM_GBM_KHR failed");
    else
@@ -98,7 +92,7 @@ bool WesteroGlCtx::Init()
 #else
 #ifdef PLATFORM_BRCM
 
-   eglDisplay_ = eglFuncs_.eglGetPlatformDisplayEXT(EGL_PLATFORM_NEXUS_BRCM, EGL_DEFAULT_DISPLAY, NULL);
+   eglDisplay_ = EGLFuncs::GetInstance()->eglGetPlatformDisplayEXT(EGL_PLATFORM_NEXUS_BRCM, EGL_DEFAULT_DISPLAY, NULL);
    if (eglDisplay_ == EGL_NO_DISPLAY)
       ERROR("eglGetPlatformDisplayEXT EGL_PLATFORM_NEXUS_BRCM failed");
    else
@@ -106,7 +100,7 @@ bool WesteroGlCtx::Init()
 
 #else
    // This fallback probably won't ever work
-   eglDisplay_ = eglFuncs_.eglGetDisplay(EGL_DEFAULT_DISPLAY);
+   eglDisplay_ = EGLFuncs::GetInstance()->eglGetDisplay(EGL_DEFAULT_DISPLAY);
    if (eglDisplay_ == EGL_NO_DISPLAY)
       ERROR("eglGetDisplay failed");
    else
@@ -129,7 +123,7 @@ bool WesteroGlCtx::LoadBuffers()
 {
    for (int i = 0; i < SWAP_CHAIN_COUNT; ++i)
    {
-      buffers_[i] = new GraphicsBuffer(&client_, &eglFuncs_, eglDisplay_);
+      buffers_[i] = new GraphicsBuffer(&client_, eglDisplay_);
       
       // Create involves getting a new buffer from the plane control server
       if (!buffers_[i]->Create())
@@ -160,7 +154,7 @@ bool WesteroGlCtx::SwapBuffers()
    // This unbinds the current graphics buffer which the client
    // has just finished drawing the current frame graphics into.
    DEBUG("WesteroGlCtx SwapBuffers calling real glBindFramebuffer fbo=0 (unbind)");
-   eglFuncs_.glBindFramebuffer(GL_FRAMEBUFFER, 0);
+   EGLFuncs::GetInstance()->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
    // Ensure all opengl commands are sent to gpu
    glFlush();
@@ -198,11 +192,11 @@ void WesteroGlCtx::BindFrameBuffer(GLenum target, GLuint framebuffer)
       GLuint ourFbo = buffers_[frontBufferIndex_]->Fbo();
 
       DEBUG("WesteroGlCtx BindFrameBuffer calling real glBindFramebuffer fbo=%u (restore)", ourFbo);
-      eglFuncs_.glBindFramebuffer(GL_FRAMEBUFFER, ourFbo);
+      EGLFuncs::GetInstance()->glBindFramebuffer(GL_FRAMEBUFFER, ourFbo);
    }
    else
    {
       DEBUG("WesteroGlCtx BindFrameBuffer calling real glBindFramebuffer fbo=%u", framebuffer);
-      eglFuncs_.glBindFramebuffer(target, framebuffer);
+      EGLFuncs::GetInstance()->glBindFramebuffer(target, framebuffer);
    }
 }

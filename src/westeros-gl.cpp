@@ -30,6 +30,8 @@
 #include "logger.h"
 #include "debugging.h"
 
+#define WESTEROS_EGL_BACKWARD_COMPATIBLE 1
+
 typedef struct _WstGLCtx
 {
    int refCnt;
@@ -51,16 +53,16 @@ typedef struct _WstGLEGLSurface
 } WstGLEGLSurface;
 
 static WstGLCtx *gCtx = NULL;
+#if (!WESTEROS_EGL_BACKWARD_COMPATIBLE)
 static const char* WESTEROS_UNINITIALIZED_TEXT = "%s failed: WstGLInit has not been called successfully\n";
+#endif
 static const char* WESTEROS_NOIMPL_TEXT = "%s not implemented\n";
 
 WstGLCtx* WstGLInit()
 {
    Logger::Init();
 
-   DEBUG("WstGLInit-Debug");
-   INFO("WstGLInit-Info");
-   ERROR("WstGLInit-Error");
+   INFO("WstGLInit");
    
    if (gCtx)
    {
@@ -114,13 +116,20 @@ void WstGLTerm( WstGLCtx *ctx )
 EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType displayId)
 {
    INFO("westeros-gl eglGetDisplay");
+
    //The client may or may not have previously called WstGlInit.  If not, its OK.
    //WstGLInit will correctly setup the EGLDisplay we will return to the client
    if (!gCtx)
    {
+#if WESTEROS_EGL_BACKWARD_COMPATIBLE
+      Logger::Init();
+      INFO("eglGetDisplay backward compatible");
+      return EGLFuncs::GetInstance()->eglGetDisplay(displayId);
+#else
       gCtx = WstGLInit();
       if (!gCtx)
          return EGL_NO_DISPLAY;
+#endif
    }
 
    if (gCtx->p->GetDisplay() != EGL_NO_DISPLAY)
@@ -135,13 +144,19 @@ EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType displayId)
    return gCtx->p->GetDisplay();
 }
 
-EGLAPI EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig config, EGLNativeWindowType native, EGLint const* attrs)
+EGLAPI EGLSurface eglCreateWindowSurface(EGLDisplay display, EGLConfig config, EGLNativeWindowType native, EGLint const* attrs)
 {
    INFO("westeros-gl eglCreateWindowSurface");
+
    if (!gCtx)
    {
+#if WESTEROS_EGL_BACKWARD_COMPATIBLE
+      INFO("eglCreateWindowSurface backward compatible");
+      return EGLFuncs::GetInstance()->eglCreateWindowSurface(display, config, native, attrs);
+#else
       Logger::Write(Logger::Error, WESTEROS_UNINITIALIZED_TEXT, __func__);
       return EGL_FALSE;
+#endif
    }
 
    //This is the logical time to create all our plane control buffers but it won't work because eglMakeCurrent hasn't happened yet
@@ -150,13 +165,18 @@ EGLAPI EGLSurface eglCreateWindowSurface(EGLDisplay dpy, EGLConfig config, EGLNa
    return fakeSurface;
 }
 
-EGLAPI EGLSurface eglCreatePlatformWindowSurface(EGLDisplay dpy, EGLConfig config, void* native, EGLint const* attrs)
+EGLAPI EGLSurface eglCreatePlatformWindowSurface(EGLDisplay display, EGLConfig config, void* native, EGLint const* attrs)
 {
    INFO("westeros-gl eglCreatePlatformWindowSurface");
    if (!gCtx)
    {
+#if WESTEROS_EGL_BACKWARD_COMPATIBLE
+      INFO("eglCreatePlatformWindowSurface backward compatible");
+      return EGLFuncs::GetInstance()->eglCreatePlatformWindowSurface(display, config, native, attrs);
+#else
       Logger::Write(Logger::Error, WESTEROS_UNINITIALIZED_TEXT, __func__);
       return EGL_FALSE;
+#endif      
    }
 
    //There is no typical window surface when using our graphics buffers, so we return a fake one.
@@ -165,13 +185,18 @@ EGLAPI EGLSurface eglCreatePlatformWindowSurface(EGLDisplay dpy, EGLConfig confi
    return fakeSurface;
 }
 
-EGLAPI EGLBoolean eglDestroySurface(EGLDisplay dpy, EGLSurface surface)
+EGLAPI EGLBoolean eglDestroySurface(EGLDisplay display, EGLSurface surface)
 {
    INFO("westeros-gl eglDestroySurface");
    if (!gCtx)
    {
+#if WESTEROS_EGL_BACKWARD_COMPATIBLE
+      DEBUG("eglDestroySurface backward compatible");
+      return EGLFuncs::GetInstance()->eglDestroySurface(display, surface);
+#else
       Logger::Write(Logger::Error, WESTEROS_UNINITIALIZED_TEXT, __func__);
       return EGL_FALSE;
+#endif
    }
 
    if(surface)
@@ -185,8 +210,13 @@ EGLAPI EGLBoolean eglQuerySurface(EGLDisplay display, EGLSurface surface, EGLint
    DEBUG("westeros-gl eglQuerySurface");
    if (!gCtx)
    {
+#if WESTEROS_EGL_BACKWARD_COMPATIBLE
+      DEBUG("eglQuerySurface backward compatible");
+      return EGLFuncs::GetInstance()->eglQuerySurface(display, surface, attribute, value);
+#else
       Logger::Write(Logger::Error, WESTEROS_UNINITIALIZED_TEXT, __func__);
       return EGL_FALSE;
+#endif
    }
 
    //TODO -- could we potentially support this on our plane control surface ?
@@ -201,8 +231,13 @@ EGLAPI EGLBoolean eglMakeCurrent(EGLDisplay display, EGLSurface draw, EGLSurface
 
    if (!gCtx)
    {
+#if WESTEROS_EGL_BACKWARD_COMPATIBLE
+      DEBUG("eglMakeCurrent backward compatible");
+      return EGLFuncs::GetInstance()->eglMakeCurrent(display, draw, read, context);
+#else
       Logger::Write(Logger::Error, WESTEROS_UNINITIALIZED_TEXT, __func__);
       return EGL_FALSE;
+#endif
    }
 
    //If they aren't passing in the display returned from eglGetDisplay, we're in trouble
@@ -217,7 +252,7 @@ EGLAPI EGLBoolean eglMakeCurrent(EGLDisplay display, EGLSurface draw, EGLSurface
    (void)draw;
    (void)read;
 
-   ret = gCtx->p->GetEGLFuncs()->eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, context);
+   ret = EGLFuncs::GetInstance()->eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, context);
 
    //We also call LoadBuffers from eglCreateWindowSurface, but what if the client is smart and doesn't call that.
    //So we call here, when we have a display and a context and it looks like the client has selected their initial context
@@ -238,10 +273,16 @@ EGLAPI EGLBoolean eglMakeCurrent(EGLDisplay display, EGLSurface draw, EGLSurface
 
 EGLAPI EGLBoolean eglSwapBuffers( EGLDisplay display, EGLSurface surface )
 {
+   DEBUG("westeros-gl eglSwapBuffers");
    if (!gCtx)
    {
+#if WESTEROS_EGL_BACKWARD_COMPATIBLE
+      DEBUG("eglSwapBuffers backward compatible");
+      return EGLFuncs::GetInstance()->eglSwapBuffers(display, surface);
+#else
       Logger::Write(Logger::Error, WESTEROS_UNINITIALIZED_TEXT, __func__);
       return EGL_FALSE;
+#endif
    }
 
    //If they aren't passing in the display returned from eglGetDisplay, we're in trouble
@@ -251,7 +292,7 @@ EGLAPI EGLBoolean eglSwapBuffers( EGLDisplay display, EGLSurface surface )
       return EGL_FALSE;
    }
 
-   debugDumpFramebuffersCheck(gCtx->p->GetEGLFuncs());
+   debugDumpFramebuffersCheck();
 
    if (gCtx->p->SwapBuffers())
       return EGL_TRUE;
@@ -264,8 +305,14 @@ void glBindFramebuffer(GLenum target, GLuint framebuffer)
    DEBUG("westeros-gl glBindFramebuffer called target=%X fbo=%u", target, framebuffer);
    if (!gCtx)
    {
+#if WESTEROS_EGL_BACKWARD_COMPATIBLE
+      DEBUG("glBindFramebuffer backward compatible");
+      EGLFuncs::GetInstance()->glBindFramebuffer(target, framebuffer);
+      return;
+#else
       Logger::Write(Logger::Error, WESTEROS_UNINITIALIZED_TEXT, __func__);
       return;
+#endif
    }
 
    //We have to override glBindFramebuffer because the client itself may be using

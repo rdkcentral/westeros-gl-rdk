@@ -2,4 +2,4 @@
 
 #include "egl-funcs.h"
 
-void debugDumpFramebuffersCheck(EGLFuncs* eglFuncs);
+void debugDumpFramebuffersCheck();
