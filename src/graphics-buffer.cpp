@@ -68,24 +68,13 @@ bool GraphicsBuffer::Commit()
 
 bool GraphicsBuffer::WaitOnRelease()
 {
-    DEBUG("GraphicsBuffer WaitOnRelease: begin wait %u", bufferId_);
+   DEBUG("GraphicsBuffer WaitOnRelease: begin wait %u", bufferId_);
 
-    int32_t releasedId = -1;
-    if (client_->waitGraphicsFbReleased(&releasedId) != 0)
-    {
-        ERROR("GraphicsBuffer WaitOnRelease: waitGraphicsFbReleased failed");
-        return false;
-   }
-
-   // AIDL listener reports -1 when no previous framebuffer exists, e.g. first commit.
-   // Continue waiting until an actual reusable framebuffer id is released.
-   while (releasedId < 0)
+   int32_t releasedId = -1;
+   if (client_->waitGraphicsFbReleased(&releasedId) != 0)
    {
-      if (client_->waitGraphicsFbReleased(&releasedId) != 0)
-      {
-         ERROR("GraphicsBuffer WaitOnRelease: waitGraphicsFbReleased failed");
-         return false;
-      }
+      ERROR("GraphicsBuffer WaitOnRelease: waitGraphicsFbReleased failed");
+      return false;
    }
    DEBUG("GraphicsBuffer WaitOnRelease done %d", releasedId);
    return true;
